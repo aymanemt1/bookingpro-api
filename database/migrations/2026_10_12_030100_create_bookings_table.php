@@ -1,0 +1,33 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('bookings', function (Blueprint $table) {
+            $table->id();
+            $table->string('booking_number')->unique();
+            $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('service_id')->constrained()->cascadeOnDelete();
+            $table->date('date');
+            $table->time('start_time');
+            $table->time('end_time');
+            $table->string('status')->default('pending'); // pending, confirmed, cancelled, completed
+            $table->string('customer_name');
+            $table->string('customer_phone');
+            $table->text('notes')->nullable();
+            $table->timestamps();
+
+            $table->index(['service_id', 'date', 'status']);
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('bookings');
+    }
+};
