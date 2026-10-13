@@ -15,7 +15,9 @@ use Carbon\Carbon;
 class AvailabilityService
 {
     public const OPEN_HOUR = 9;
+
     public const CLOSE_HOUR = 18;
+
     public const STEP_MINUTES = 30;
 
     public function isOpenDate(Carbon $date): bool
@@ -30,7 +32,9 @@ class AvailabilityService
     {
         $day = Carbon::parse($date)->startOfDay();
 
-        if (! $this->isOpenDate($day) || $day->isPast()) {
+        // Compare calendar dates. startOfDay() is already behind now(), so isPast()
+        // would treat today as closed and hide slots that have not started yet.
+        if (! $this->isOpenDate($day) || $day->isBefore(now()->startOfDay())) {
             return [];
         }
 
