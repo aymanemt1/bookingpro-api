@@ -62,6 +62,74 @@ class BookingTest extends TestCase
             ->assertJsonCount(0, 'slots');
     }
 
+    public function test_availability_keeps_later_slots_open_on_the_current_day(): void
+    {
+        $this->travelTo('2026-10-14 10:15:00');
+
+        $service = Service::factory()->create(['duration_minutes' => 60]);
+
+        $today = $this->getJson("/api/services/{$service->id}/availability?date=2026-10-14");
+
+        $today->assertOk()
+            ->assertJsonPath('open', true)
+            ->assertJsonFragment(['start' => '09:00', 'end' => '10:00', 'available' => false])
+            ->assertJsonFragment(['start' => '10:00', 'end' => '11:00', 'available' => false])
+            ->assertJsonFragment(['start' => '10:30', 'end' => '11:30', 'available' => true])
+            ->assertJsonFragment(['start' => '11:00', 'end' => '12:00', 'available' => true]);
+
+        $this->getJson("/api/services/{$service->id}/availability?date=2026-10-13")
+            ->assertOk()
+            ->assertJsonCount(0, 'slots');
+    }
+
+    public function test_guest_can_book_a_later_slot_on_the_current_day(): void
+    {
+        $this->travelTo('2026-10-14 10:15:00');
+
+        $service = Service::factory()->create(['duration_minutes' => 60]);
+
+        $response = $this->postJson('/api/bookings', [
+            'service_id' => $service->id,
+            'date' => '2026-10-14',
+            'start_time' => '11:00',
+            'customer_name' => 'Aymane Moutoute',
+            'customer_phone' => '+212600000000',
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.date', '2026-10-14')
+            ->assertJsonPath('data.start_time', '11:00')
+            ->assertJsonPath('data.end_time', '12:00');
+
+        $this->assertDatabaseHas('bookings', [
+            'service_id' => $service->id,
+            'status' => Booking::STATUS_PENDING,
+        ]);
+
+        $booking = Booking::sole();
+        $this->assertSame('2026-10-14', $booking->date->toDateString());
+        $this->assertSame('11:00', substr($booking->start_time, 0, 5));
+        $this->assertSame('12:00', substr($booking->end_time, 0, 5));
+    }
+
+    public function test_started_slot_on_the_current_day_is_rejected(): void
+    {
+        $this->travelTo('2026-10-14 10:15:00');
+
+        $service = Service::factory()->create(['duration_minutes' => 60]);
+
+        $this->postJson('/api/bookings', [
+            'service_id' => $service->id,
+            'date' => '2026-10-14',
+            'start_time' => '09:00',
+            'customer_name' => 'Aymane Moutoute',
+            'customer_phone' => '+212600000000',
+        ])->assertUnprocessable()
+            ->assertJsonPath('message', 'This time slot is no longer available.');
+
+        $this->assertDatabaseCount('bookings', 0);
+    }
+
     public function test_guest_can_create_booking(): void
     {
         $payload = $this->book();
