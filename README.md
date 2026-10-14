@@ -1,3 +1,5 @@
+[![Tests](https://github.com/aymanemt1/bookingpro-api/actions/workflows/tests.yml/badge.svg)](https://github.com/aymanemt1/bookingpro-api/actions/workflows/tests.yml)
+
 # 📅 BookingPro API
 
 A complete **appointment booking REST API** built with Laravel 12 — services, real availability engine, guest + customer bookings, and an admin dashboard backend.
